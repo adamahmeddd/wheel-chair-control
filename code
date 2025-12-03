@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino Voice Robot</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background-color: #222; color: white; padding: 20px; }
+        button { padding: 15px 30px; font-size: 18px; margin: 10px; border-radius: 10px; border: none; cursor: pointer; }
+        .btn-ctrl { background-color: #4CAF50; color: white; width: 100px; height: 60px; }
+        .btn-stop { background-color: #f44336; color: white; width: 100px; height: 60px; }
+        .btn-ble { background-color: #2196F3; color: white; width: 100%; max-width: 300px; margin-bottom: 20px;}
+        .btn-voice { background-color: #ff9800; color: white; width: 100%; max-width: 300px; margin-bottom: 20px;}
+        #status { margin-top: 20px; color: #aaa; }
+    </style>
+</head>
+<body>
+
+    <h1>🤖 Robot Controller</h1>
+    
+    <button class="btn-ble" onclick="connectBLE()">📡 Connect Bluetooth (HM-10)</button>
+    <br>
+    <button class="btn-voice" onclick="startVoice()">🎤 Start Voice Command</button>
+
+    <div id="controls">
+        <br>
+        <button class="btn-ctrl" onmousedown="sendCommand('F')" onmouseup="sendCommand('S')">⬆️ Fwd</button><br>
+        <button class="btn-ctrl" onmousedown="sendCommand('L')" onmouseup="sendCommand('S')">⬅️ Left</button>
+        <button class="btn-stop" onclick="sendCommand('S')">⏹ Stop</button>
+        <button class="btn-ctrl" onmousedown="sendCommand('R')" onmouseup="sendCommand('S')">➡️ Right</button><br>
+        <button class="btn-ctrl" onmousedown="sendCommand('B')" onmouseup="sendCommand('S')">⬇️ Back</button>
+    </div>
+
+    <p id="status">Status: Disconnected</p>
+    <p id="voiceText">Voice: ...</p>
+
+    <script>
+        // HM-10 Standard UUIDs
+        const serviceUUID = "0000ffe0-0000-1000-8000-00805f9b34fb";
+        const charUUID =    "0000ffe1-0000-1000-8000-00805f9b34fb";
+        
+        let bleDevice, bleServer, bleService, bleChar;
+
+        async function connectBLE() {
+            try {
+                document.getElementById("status").innerText = "Scanning...";
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [serviceUUID] }]
+                });
+
+                bleServer = await bleDevice.gatt.connect();
+                bleService = await bleServer.getPrimaryService(serviceUUID);
+                bleChar = await bleService.getCharacteristic(charUUID);
+
+                document.getElementById("status").innerText = "✅ Connected to " + bleDevice.name;
+            } catch (error) {
+                console.log(error);
+                document.getElementById("status").innerText = "❌ Connection Failed: " + error;
+            }
+        }
+
+        async function sendCommand(cmd) {
+            if (!bleChar) return;
+            // Send character as bytes
+            const encoder = new TextEncoder();
+            await bleChar.writeValue(encoder.encode(cmd));
+        }
+
+        // --- Voice Recognition ---
+        function startVoice() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Browser does not support Voice API. Use Chrome.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.start();
+
+            document.getElementById("voiceText").innerText = "Voice: Listening...";
+
+            recognition.onresult = function(event) {
+                const command = event.results[0][0].transcript.toLowerCase();
+                document.getElementById("voiceText").innerText = "Voice: " + command;
+
+                if (command.includes("forward") || command.includes("go")) sendCommand('F');
+                else if (command.includes("back") || command.includes("reverse")) sendCommand('B');
+                else if (command.includes("left")) sendCommand('L');
+                else if (command.includes("right")) sendCommand('R');
+                else if (command.includes("stop") || command.includes("halt")) sendCommand('S');
+            };
+
+            recognition.onspeechend = function() {
+                recognition.stop();
+            }
+        }
+    </script>
+</body>
+</html>
