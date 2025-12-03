@@ -2,37 +2,110 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arduino Voice Robot</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Robot Controller</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background-color: #222; color: white; padding: 20px; }
-        button { padding: 15px 30px; font-size: 18px; margin: 10px; border-radius: 10px; border: none; cursor: pointer; }
-        .btn-ctrl { background-color: #4CAF50; color: white; width: 100px; height: 60px; }
-        .btn-stop { background-color: #f44336; color: white; width: 100px; height: 60px; }
-        .btn-ble { background-color: #2196F3; color: white; width: 100%; max-width: 300px; margin-bottom: 20px;}
-        .btn-voice { background-color: #ff9800; color: white; width: 100%; max-width: 300px; margin-bottom: 20px;}
-        #status { margin-top: 20px; color: #aaa; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            text-align: center; 
+            background-color: #1a1a1a; 
+            color: white; 
+            margin: 0;
+            padding: 20px;
+            /* Prevent selecting text while tapping buttons */
+            user-select: none; 
+            -webkit-user-select: none;
+        }
+
+        h1 { margin-bottom: 30px; font-size: 24px; }
+
+        /* Top Action Buttons */
+        .top-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .btn-main { 
+            padding: 15px 20px; 
+            font-size: 16px; 
+            border-radius: 12px; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: bold;
+            flex: 1;
+            max-width: 150px;
+        }
+
+        .btn-connect { background-color: #2196F3; color: white; }
+        .btn-voice { background-color: #ff9800; color: white; }
+
+        /* D-Pad / Wheelchair Grid Layout */
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, auto);
+            gap: 10px;
+            max-width: 320px;
+            margin: 0 auto; /* Center the grid */
+        }
+
+        .dpad-btn {
+            background-color: #444;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 20px 0;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px #222; /* 3D effect */
+            active: box-shadow: 0 2px #222; transform: translateY(2px);
+            touch-action: manipulation; /* Improves touch response */
+        }
+
+        .dpad-btn:active {
+            background-color: #666;
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        /* Specific Button Colors & Positions */
+        #btn-fwd  { grid-column: 2; grid-row: 1; background-color: #4CAF50; }
+        #btn-left { grid-column: 1; grid-row: 2; background-color: #4CAF50; }
+        #btn-stop { grid-column: 2; grid-row: 2; background-color: #f44336; font-size: 18px; font-weight: bold;}
+        #btn-right{ grid-column: 3; grid-row: 2; background-color: #4CAF50; }
+        #btn-back { grid-column: 2; grid-row: 3; background-color: #4CAF50; }
+
+        #status { margin-top: 30px; color: #888; font-size: 14px; }
+        #voiceText { color: #ff9800; font-style: italic; min-height: 24px; }
+
     </style>
 </head>
 <body>
 
-    <h1>Wheel Chair Control</h1>
+    <h1>🤖 Controller</h1>
     
-    <button class="btn-ble" onclick="connectBLE()">📡 Connect</button>
-    <br>
-    <button class="btn-voice" onclick="startVoice()">🎤 Start Voice Command</button>
-
-    <div id="controls">
-        <br>
-        <button class="btn-ctrl" onmousedown="sendCommand('F')" onmouseup="sendCommand('S')">⬆️ Fwd</button><br>
-        <button class="btn-ctrl" onmousedown="sendCommand('L')" onmouseup="sendCommand('S')">⬅️ Left</button>
-        <button class="btn-stop" onclick="sendCommand('S')">⏹ Stop</button>
-        <button class="btn-ctrl" onmousedown="sendCommand('R')" onmouseup="sendCommand('S')">➡️ Right</button><br>
-        <button class="btn-ctrl" onmousedown="sendCommand('B')" onmouseup="sendCommand('S')">⬇️ Back</button>
+    <div class="top-buttons">
+        <button class="btn-main btn-connect" onclick="connectBLE()">📡 Connect</button>
+        <button class="btn-main btn-voice" onclick="startVoice()">🎤 Voice</button>
     </div>
 
+    <div class="control-grid">
+        <!-- Row 1 -->
+        <button id="btn-fwd" class="dpad-btn" onmousedown="startCmd('F')" onmouseup="endCmd()" ontouchstart="startCmd('F')" ontouchend="endCmd()">⬆️</button>
+        
+        <!-- Row 2 -->
+        <button id="btn-left" class="dpad-btn" onmousedown="startCmd('L')" onmouseup="endCmd()" ontouchstart="startCmd('L')" ontouchend="endCmd()">⬅️</button>
+        <button id="btn-stop" class="dpad-btn" onclick="sendCommand('S')">STOP</button>
+        <button id="btn-right" class="dpad-btn" onmousedown="startCmd('R')" onmouseup="endCmd()" ontouchstart="startCmd('R')" ontouchend="endCmd()">➡️</button>
+        
+        <!-- Row 3 -->
+        <button id="btn-back" class="dpad-btn" onmousedown="startCmd('B')" onmouseup="endCmd()" ontouchstart="startCmd('B')" ontouchend="endCmd()">⬇️</button>
+    </div>
+
+    <p id="voiceText"></p>
     <p id="status">Status: Disconnected</p>
-    <p id="voiceText">Voice: ...</p>
 
     <script>
         // HM-10 Standard UUIDs
@@ -55,22 +128,37 @@
                 document.getElementById("status").innerText = "✅ Connected to " + bleDevice.name;
             } catch (error) {
                 console.log(error);
-                document.getElementById("status").innerText = "❌ Connection Failed: " + error;
+                document.getElementById("status").innerText = "❌ Failed: " + error;
             }
         }
 
         async function sendCommand(cmd) {
             if (!bleChar) return;
-            // Send character as bytes
-            const encoder = new TextEncoder();
-            await bleChar.writeValue(encoder.encode(cmd));
+            try {
+                const encoder = new TextEncoder();
+                await bleChar.writeValue(encoder.encode(cmd));
+            } catch (e) {
+                console.log("Send Error: " + e);
+            }
+        }
+
+        // Handle Touch/Click events to prevent sticky buttons
+        function startCmd(cmd) {
+            // Prevent default touch actions (scrolling)
+            if(event.type === 'touchstart') event.preventDefault();
+            sendCommand(cmd);
+        }
+
+        function endCmd() {
+            if(event.type === 'touchend') event.preventDefault();
+            sendCommand('S');
         }
 
         // --- Voice Recognition ---
         function startVoice() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
-                alert("Browser does not support Voice API. Use Chrome.");
+                alert("Use Chrome Browser for Voice.");
                 return;
             }
 
@@ -78,11 +166,11 @@
             recognition.lang = 'en-US';
             recognition.start();
 
-            document.getElementById("voiceText").innerText = "Voice: Listening...";
+            document.getElementById("voiceText").innerText = "Listening...";
 
             recognition.onresult = function(event) {
                 const command = event.results[0][0].transcript.toLowerCase();
-                document.getElementById("voiceText").innerText = "Voice: " + command;
+                document.getElementById("voiceText").innerText = '"' + command + '"';
 
                 if (command.includes("forward") || command.includes("go")) sendCommand('F');
                 else if (command.includes("back") || command.includes("reverse")) sendCommand('B');
